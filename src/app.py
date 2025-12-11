@@ -1,6 +1,10 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import streamlit as st
 import pandas as pd
-from src.lexer import Lexer, LexerError, Token
+from lexer import Lexer, LexerError, Token
 
 st.title("Phase 1 SQL Lexer")
 

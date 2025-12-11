@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from src.lexer import Lexer, LexerError, Token
+from lexer import Lexer, LexerError, Token
 
 st.title("Phase 1 SQL Lexer")
 

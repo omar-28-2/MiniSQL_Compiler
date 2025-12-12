@@ -186,7 +186,7 @@ COALESCE(expr1, expr2, ...)
 
 ### Tab 2: Parse Tree
 - Display syntax errors with context
-- Tree visualization (text format)
+- Tree visualization (interactive with proper ASCII formatting)
 - JSON representation
 - Parse tree structure
 
@@ -414,6 +414,25 @@ Ready for Phase 03 (Semantic Analysis) if needed.
 
 **Last Updated**: December 2025
 
+## Recent Fixes (December 2025)
+
+### Bug Fixes
+- ✅ **Fixed CREATE TABLE parsing**: Corrected DELIMITER type checking in `parse_data_type()` and `parse_column_definitions()`
+- ✅ **Fixed comparison operators**: Resolved parsing issues with `>=` and `<=` operators in conditions
+- ✅ **Fixed boolean conditions**: Added support for bare expressions (e.g., `NOT Active`) as valid conditions
+- ✅ **Improved token type checking**: Replaced 7 incorrect `match()` calls with proper `match_type('DELIMITER')` checks throughout parser
+
+### UI Improvements
+- ✅ **Removed Text Tree view**: Simplified output display to show only Visual Tree and JSON Structure options
+- ✅ **Enhanced parse tree visualization**: Interactive tree view with proper formatting
+
+### Testing
+- ✅ All test queries now parse without errors
+- ✅ Verified complex WHERE conditions with multiple operators
+- ✅ Tested arithmetic expressions in conditions (e.g., `Balance <= 5000 / 2`)
+
+**Branch**: `fix/syntax-errors` with 4 focused commits documenting each fix
+
 lexer = Lexer("SELECT * FROM users;")
 while True:
     token = lexer.get_next_token()
@@ -472,6 +491,44 @@ Multiple test files provided:
 - Improved operator handling (multi-character, bitwise)
 - Better error messages and recovery
 - Comprehensive project structure and documentation
+
+## Recent Fixes (December 2025)
+
+### Bug Fixes
+- ✅ **Fixed CREATE TABLE parsing**: Corrected DELIMITER type checking in `parse_data_type()` and `parse_column_definitions()`
+- ✅ **Fixed comparison operators**: Resolved parsing issues with `>=` and `<=` operators in conditions
+- ✅ **Fixed boolean conditions**: Added support for bare expressions (e.g., `NOT Active`) as valid conditions
+- ✅ **Improved token type checking**: Replaced 7 incorrect `match()` calls with proper `match_type('DELIMITER')` checks throughout parser
+
+### UI Improvements
+- ✅ **Removed Text Tree view**: Simplified output display to show only Visual Tree and JSON Structure options
+- ✅ **Enhanced parse tree visualization**: Interactive tree view with proper formatting
+
+### Testing
+- ✅ All test queries now parse without errors
+- ✅ Verified complex WHERE conditions with multiple operators
+- ✅ Tested arithmetic expressions in conditions (e.g., `Balance <= 5000 / 2`)
+
+**Branch**: `fix/syntax-errors` with 4 focused commits documenting each fix
+
+## Recent Fixes (December 2025)
+
+### Bug Fixes
+- ✅ **Fixed CREATE TABLE parsing**: Corrected DELIMITER type checking in `parse_data_type()` and `parse_column_definitions()`
+- ✅ **Fixed comparison operators**: Resolved parsing issues with `>=` and `<=` operators in conditions
+- ✅ **Fixed boolean conditions**: Added support for bare expressions (e.g., `NOT Active`) as valid conditions
+- ✅ **Improved token type checking**: Replaced 7 incorrect `match()` calls with proper `match_type('DELIMITER')` checks throughout parser
+
+### UI Improvements
+- ✅ **Removed Text Tree view**: Simplified output display to show only Visual Tree and JSON Structure options
+- ✅ **Enhanced parse tree visualization**: Interactive tree view with proper formatting
+
+### Testing
+- ✅ All test queries now parse without errors
+- ✅ Verified complex WHERE conditions with multiple operators
+- ✅ Tested arithmetic expressions in conditions (e.g., `Balance <= 5000 / 2`)
+
+**Branch**: `fix/syntax-errors` with 4 focused commits documenting each fix
 
 ## Future Phases
 

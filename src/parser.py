@@ -368,7 +368,7 @@ class Parser:
             col_def = self.parse_column_definition()
             node.add_child(col_def)
             
-            if self.match('DELIMITER') and self.current_token.value == ',':
+            if self.match_type('DELIMITER') and self.current_token.value == ',':
                 self.advance()
             else:
                 break
@@ -410,7 +410,7 @@ class Parser:
         self.advance()
         
         # Handle size specifiers like INT(10)
-        if self.match('DELIMITER') and self.current_token.value == '(':
+        if self.match_type('DELIMITER') and self.current_token.value == '(':
             self.advance()
             size_token = self.expect('INTEGER')
             node.add_child(ParseTreeNode(NodeType.TERMINAL, value=size_token.value,

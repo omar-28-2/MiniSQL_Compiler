@@ -98,7 +98,7 @@ if uploaded_file is not None:
             with viz_col1:
                 tree_view = st.radio(
                     "Tree View Style",
-                    ["Visual Tree", "Text Tree", "JSON Structure"],
+                    ["Visual Tree", "JSON Structure"],
                     horizontal=True
                 )
             
@@ -145,11 +145,6 @@ if uploaded_file is not None:
                 tree_lines = render_tree_visual(parse_tree)
                 tree_visual = "\n".join(tree_lines)
                 st.code(tree_visual, language="text")
-                
-            elif tree_view == "Text Tree":
-                st.subheader("Parse Tree (Detailed)")
-                tree_str = parse_tree.to_string()
-                st.code(tree_str, language="text")
                 
             else:  # JSON Structure
                 st.subheader("Parse Tree (JSON Format)")

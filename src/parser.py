@@ -368,7 +368,7 @@ class Parser:
             col_def = self.parse_column_definition()
             node.add_child(col_def)
             
-            if self.match('DELIMITER') and self.current_token.value == ',':
+            if self.match_type('DELIMITER') and self.current_token.value == ',':
                 self.advance()
             else:
                 break
@@ -410,7 +410,7 @@ class Parser:
         self.advance()
         
         # Handle size specifiers like INT(10)
-        if self.match('DELIMITER') and self.current_token.value == '(':
+        if self.match_type('DELIMITER') and self.current_token.value == '(':
             self.advance()
             size_token = self.expect('INTEGER')
             node.add_child(ParseTreeNode(NodeType.TERMINAL, value=size_token.value,
@@ -801,7 +801,7 @@ class Parser:
             sort_item = self.parse_sort_item()
             node.add_child(sort_item)
             
-            if self.match('DELIMITER') and self.current_token.value == ',':
+            if self.match_type('DELIMITER') and self.current_token.value == ',':
                 self.advance()
             else:
                 break
@@ -903,7 +903,7 @@ class Parser:
             col_node.add_child(self.parse_expression())
             node.add_child(col_node)
             
-            if self.match('DELIMITER') and self.current_token.value == ',':
+            if self.match_type('DELIMITER') and self.current_token.value == ',':
                 self.advance()
             else:
                 break
@@ -976,9 +976,9 @@ class Parser:
         return self.parse_primary_condition()
     
     def parse_primary_condition(self) -> ParseTreeNode:
-        """Parse primary condition (comparison, BETWEEN, IN, LIKE, IS NULL)"""
+        """Parse primary condition (comparison, BETWEEN, IN, LIKE, IS NULL, or bare expression for boolean columns)"""
         # Handle parenthesized condition
-        if self.match('DELIMITER') and self.current_token.value == '(':
+        if self.match_type('DELIMITER') and self.current_token.value == '(':
             self.advance()
             cond = self.parse_condition()
             self.expect('DELIMITER', ')')
@@ -999,8 +999,8 @@ class Parser:
         elif self.match_type('COMPARISON', 'OPERATOR'):
             return self.parse_comparison(left_expr)
         else:
-            self.error(f"Expected comparison operator but found '{self.current_token.value}'")
-            raise ParseError("Expected comparison operator")
+            # Allow bare expressions (e.g., boolean columns like "Active" or "NOT Active")
+            return left_expr
     
     def parse_comparison(self, left_expr: ParseTreeNode) -> ParseTreeNode:
         """Parse comparison operation"""
@@ -1052,7 +1052,7 @@ class Parser:
         while True:
             values.append(self.parse_expression())
             
-            if self.match('DELIMITER') and self.current_token.value == ',':
+            if self.match_type('DELIMITER') and self.current_token.value == ',':
                 self.advance()
             else:
                 break
@@ -1278,7 +1278,7 @@ class Parser:
             node.add_child(ParseTreeNode(NodeType.COLUMN, value=col_token.value,
                                          line=col_token.line, column=col_token.column))
             
-            if self.match('DELIMITER') and self.current_token.value == ',':
+            if self.match_type('DELIMITER') and self.current_token.value == ',':
                 self.advance()
             else:
                 break

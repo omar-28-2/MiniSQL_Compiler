@@ -108,24 +108,86 @@ class ParseTreeNode:
         self.line = line  # Source line number
         self.column = column  # Source column number
     
-    def add_child(self, child: 'ParseTreeNode') -> None:
-        """Add a child node"""
+    def add_child(self, child: 'ParseTreeNode'):
         self.children.append(child)
-    
-    def __repr__(self) -> str:
-        return f"ParseTreeNode({self.node_type.value}, value={self.value})"
-    
-    def to_string(self, indent: int = 0) -> str:
-        """Generate a pretty-printed representation of the tree"""
-        result = "  " * indent + self.node_type.value
-        if self.value is not None:
-            result += f": '{self.value}'"
-        result += f" (Line {self.line}, Col {self.column})" if self.line else ""
-        result += "\n"
+
+    def __repr__(self):
+        if self.value:
+            return f"({self.node_type.value}: {self.value})"
+        return f"({self.node_type.value})"
+
+    def get_node_count(self) -> int:
+        """Count total nodes in the subtree"""
+        count = 1
+        for child in self.children:
+            count += child.get_node_count()
+        return count
+
+    def get_depth(self) -> int:
+        """Calculate maximum tree depth"""
+        if not self.children:
+            return 1
+        return 1 + max(child.get_depth() for child in self.children)
+
+    def get_terminal_count(self) -> int:
+        """Count terminal nodes (leaf nodes or specific terminal types)"""
+        if not self.children:
+            return 1
+        return sum(child.get_terminal_count() for child in self.children)
+
+    def get_non_terminal_count(self) -> int:
+        """Count non-terminal nodes (internal nodes)"""
+        count = 1 if self.children else 0
+        for child in self.children:
+            count += child.get_non_terminal_count()
+        return count
+
+    def to_visual_string(self, level=0, prefix="", is_last_sibling=True) -> List[str]:
+        """Generate interactive-style ASCII visualization of the tree"""
+        # Get node label
+        if self.value:
+            label = f"{self.node_type.value}: '{self.value}'"
+        else:
+            label = self.node_type.value
         
+        # Add semantic annotation if present
+        if hasattr(self, "inferred_type") and self.inferred_type:
+            label += f" <Type: {self.inferred_type}>"
+        
+        # Add location info
+        location = ""
+        if self.line or self.column:
+            if self.line and self.column:
+                location = f" (Line {self.line}, Col {self.column})"
+            elif self.line:
+                location = f" (Line {self.line})"
+        
+        # Build current node line
+        if level == 0:
+            tree_lines = [f"🌳 {label}{location}"]
+        else:
+            connector = "└── " if is_last_sibling else "├── "
+            tree_lines = [f"{prefix}{connector}{label}{location}"]
+        
+        # Recursively add children
+        for i, child in enumerate(self.children):
+            is_last_child = (i == len(self.children) - 1)
+            if level == 0:
+                child_prefix = ""
+            else:
+                extension = "    " if is_last_sibling else "│   "
+                child_prefix = prefix + extension
+            
+            child_lines = child.to_visual_string(level + 1, child_prefix, is_last_child)
+            tree_lines.extend(child_lines)
+        
+        return tree_lines
+
+    def to_string(self, indent: int = 0):
+        """Generate a pretty-printed representation of the tree"""
+        result = "  " * indent + str(self) + "\n"
         for child in self.children:
             result += child.to_string(indent + 1)
-        
         return result
 
 

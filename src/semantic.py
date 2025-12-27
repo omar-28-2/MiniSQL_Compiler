@@ -1,11 +1,7 @@
-"""
-Semantic Analyzer (Phase 03)
-Implements semantic analysis, symbol table management, and type checking.
-"""
-
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from parser import ParseTreeNode, NodeType
+from constants import VALID_DATA_TYPES
 
 # Import Parser classes to avoid circular imports if possible, or use typing.TYPE_CHECKING
 # But since we use ParseTreeNode and NodeType, we need to import them.
@@ -145,8 +141,7 @@ class SemanticAnalyzer:
             data_type = type_node.children[0].value # Base type
             
             # Basic type validation
-            valid_types = ['INT', 'INTEGER', 'FLOAT', 'DOUBLE', 'VARCHAR', 'TEXT', 'CHAR', 'BOOLEAN', 'DATE']
-            if data_type.upper() not in valid_types:
+            if data_type.upper() not in VALID_DATA_TYPES:
                  self.error(f"Invalid data type '{data_type}'", type_node.line, type_node.column)
             
             constraints = []
@@ -257,25 +252,38 @@ class SemanticAnalyzer:
         self.current_query_scope = {} # Reset scope
 
     def visit_column(self, node: ParseTreeNode) -> None:
-        # Check if column exists in current scope
-        # Node structure might be complex (expression -> column)
-        # But usually NodeType.COLUMN in SELECT list wraps an expression + alias
-        # Direct column references in expressions are usually Terminals or QualifiedNames?
-        # Re-checking parser: parse_expression returns nodes, but variables are IDENTIFIER tokens creating...
-        # Wait, identifier alone isn't a node type. parser.py line 1243: `ParseTreeNode(NodeType.TERMINAL, ...)`
-        # or `QualifiedName`
-        pass 
-        # Actually, column references inside expressions appear as TERMINALs (if simple) or QUALIFIED_NAME.
-        # I need to intervene at the Expression level to find identifiers.
+        """Verify column exists in current scope"""
+        col_name = node.value
+        if not col_name: # Could be an expression alias
+            self.visit_children(node)
+            return
 
-        # Let's override visit_terminal to catch identifiers if they check out against tables?
-        # No, Terminals are generic.
-        # I need to look at how identifiers are stored in expressions in parser.py
-        # They seem to be TERMINAL nodes or possibly wrapped.
+        # Simple column name check
+        found = False
+        for alias, table_name in self.current_query_scope.items():
+            if self.symbol_table.get_column(table_name, col_name):
+                found = True
+                break
         
-        # Let's inspect `parse_primary_expression` in parser.py if needed.
-        # Assuming for now I traverse down to finding column references.
+        if not found and self.current_query_scope:
+            self.error(f"Column '{col_name}' does not exist in any of the referenced tables", 
+                       node.line, node.column)
+        
         self.visit_children(node)
+
+    def visit_qualified_name(self, node: ParseTreeNode) -> None:
+        """Handle t1.col_name style references"""
+        prefix = node.children[0].value.upper()
+        col_name = node.children[1].value
+        
+        if prefix in self.current_query_scope:
+            table_name = self.current_query_scope[prefix]
+            if not self.symbol_table.get_column(table_name, col_name):
+                self.error(f"Column '{col_name}' does not exist in table '{table_name}'", 
+                           node.line, node.column)
+        else:
+            self.error(f"Table alias or name '{prefix}' not found in current query scope", 
+                       node.line, node.column)
 
     def visit_delete(self, node: ParseTreeNode) -> None:
          table_name = node.children[0].value

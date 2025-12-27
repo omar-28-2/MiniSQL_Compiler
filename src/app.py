@@ -5,16 +5,8 @@ from parser import parse_sql, ParseError
 from semantic import SemanticAnalyzer
 
 
-def count_nodes(node):
-    """Count total nodes in parse tree"""
-    count = 1
-    for child in node.children:
-        count += count_nodes(child)
-    return count
-
-
-st.set_page_config(page_title="SQL Compiler - Phases 1 & 2", layout="wide")
-st.title("SQL Compiler - Lexical Analyzer & Syntax Analyzer")
+st.set_page_config(page_title="SQL Compiler - Phase 1, 2 & 3", layout="wide")
+st.title("SQL Compiler - Lexical, Syntax & Semantic Analysis")
 
 # Tabs for different phases
 tab1, tab2, tab3, tab4 = st.tabs(["Input & Tokens", "Parse Tree", "Semantic Analysis", "Analysis Summary"])
@@ -27,33 +19,18 @@ if uploaded_file is not None:
     st.subheader("Input SQL Code")
     st.code(text, language='sql')
     
-    # ==================== PHASE 1: LEXICAL ANALYSIS ====================
+    # ==================== PHASES 1 & 2: LEXICAL & SYNTAX ANALYSIS ====================
+    parse_tree, lexer_errors, parser_errors = parse_sql(text)
+    
+    # Get tokens for display (optional, but good for Tab 1)
     lexer = Lexer(text)
     tokens = []
-    lexer_errors = []
-    
     while True:
         try:
-            token = lexer.get_next_token()
-            if token.type == 'EOF':
-                tokens.append(token)
-                break
-            tokens.append(token)
-        except LexerError as e:
-            lexer_errors.append(str(e))
-            if lexer.current_char is not None:
-                lexer.advance()
-            else:
-                break
-        except Exception as e:
-            lexer_errors.append(f"Unexpected error: {str(e)}")
-            if lexer.current_char is not None:
-                lexer.advance()
-            else:
-                break
-    
-    # ==================== PHASE 2: SYNTAX ANALYSIS ====================
-    parse_tree, lex_errors, parser_errors = parse_sql(text)
+            t = lexer.get_next_token()
+            tokens.append(t)
+            if t.type == 'EOF': break
+        except: break 
 
     # ==================== PHASE 3: SEMANTIC ANALYSIS ====================
     semantic_success = False
@@ -78,7 +55,7 @@ if uploaded_file is not None:
                 'Column': [token.column for token in tokens[:-1]]
             }
             df = pd.DataFrame(token_data)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.info("No tokens found")
         
@@ -86,7 +63,7 @@ if uploaded_file is not None:
         st.subheader("Lexical Errors")
         if lexer_errors:
             for error in lexer_errors:
-                st.error(error)
+                st.error(str(error))
         else:
             st.success("✓ No lexical errors found!")
     
@@ -114,49 +91,7 @@ if uploaded_file is not None:
             
             if tree_view == "Visual Tree":
                 st.subheader("Parse Tree (Interactive)")
-                
-                def render_tree_visual(node, level=0, prefix="", is_last_sibling=True):
-                    """Render interactive collapsible tree with proper ASCII formatting"""
-                    # Get node label
-                    if node.value:
-                        label = f"{node.node_type.value}: '{node.value}'"
-                    else:
-                        label = node.node_type.value
-                    
-                    # Add semantic annotation
-                    if hasattr(node, "inferred_type") and node.inferred_type:
-                        label += f" <Type: {node.inferred_type}>"
-                    
-                    # Add location info
-                    location = ""
-                    if node.line or node.column:
-                        if node.line and node.column:
-                            location = f" (Line {node.line}, Col {node.column})"
-                        elif node.line:
-                            location = f" (Line {node.line})"
-                    
-                    # Build current node line
-                    if level == 0:
-                        tree_lines = [f"🌳 {label}{location}"]
-                    else:
-                        connector = "└── " if is_last_sibling else "├── "
-                        tree_lines = [f"{prefix}{connector}{label}{location}"]
-                    
-                    # Recursively add children
-                    for i, child in enumerate(node.children):
-                        is_last_child = (i == len(node.children) - 1)
-                        if level == 0:
-                            child_prefix = ""
-                        else:
-                            extension = "    " if is_last_sibling else "│   "
-                            child_prefix = prefix + extension
-                        
-                        child_lines = render_tree_visual(child, level + 1, child_prefix, is_last_child)
-                        tree_lines.extend(child_lines)
-                    
-                    return tree_lines
-                
-                tree_lines = render_tree_visual(parse_tree)
+                tree_lines = parse_tree.to_visual_string()
                 tree_visual = "\n".join(tree_lines)
                 st.code(tree_visual, language="text")
                 
@@ -179,35 +114,14 @@ if uploaded_file is not None:
             # Tree statistics
             with st.expander("Tree Statistics"):
                 col1, col2, col3, col4 = st.columns(4)
-                
-                def count_tree_depth(node):
-                    """Calculate tree depth"""
-                    if not node.children:
-                        return 1
-                    return 1 + max(count_tree_depth(child) for child in node.children)
-                
-                def count_terminal_nodes(node):
-                    """Count terminal nodes"""
-                    count = 1 if node.node_type.value == "Terminal" else 0
-                    for child in node.children:
-                        count += count_terminal_nodes(child)
-                    return count
-                
-                def count_non_terminal_nodes(node):
-                    """Count non-terminal nodes"""
-                    count = 1 if node.node_type.value != "Terminal" else 0
-                    for child in node.children:
-                        count += count_non_terminal_nodes(child)
-                    return count
-                
                 with col1:
-                    st.metric("Total Nodes", count_nodes(parse_tree))
+                    st.metric("Total Nodes", parse_tree.get_node_count())
                 with col2:
-                    st.metric("Tree Depth", count_tree_depth(parse_tree))
+                    st.metric("Tree Depth", parse_tree.get_depth())
                 with col3:
-                    st.metric("Terminal Nodes", count_terminal_nodes(parse_tree))
+                    st.metric("Terminal Nodes", parse_tree.get_terminal_count())
                 with col4:
-                    st.metric("Non-Terminal Nodes", count_non_terminal_nodes(parse_tree))
+                    st.metric("Non-Terminal Nodes", parse_tree.get_non_terminal_count())
         else:
             st.error("Failed to generate parse tree due to critical parsing errors.")
     
@@ -255,7 +169,7 @@ if uploaded_file is not None:
         with col2:
             st.metric("Syntax Errors", len(parser_errors))
             if parse_tree:
-                st.metric("Parse Tree Nodes", count_nodes(parse_tree))
+                st.metric("Parse Tree Nodes", parse_tree.get_node_count())
         
         with col3:
             if lexer_errors or parser_errors:
@@ -278,7 +192,7 @@ if uploaded_file is not None:
                 'Count': list(token_types.values())
             }
             stats_df = pd.DataFrame(stats_data)
-            st.dataframe(stats_df, use_container_width=True)
+            st.dataframe(stats_df, width='stretch')
             
             # Bar chart
             st.bar_chart(stats_df.set_index('Token Type'))
@@ -294,4 +208,4 @@ if uploaded_file is not None:
                 'Found': [error.found or '-' for error in parser_errors]
             }
             error_df = pd.DataFrame(error_data)
-            st.dataframe(error_df, use_container_width=True)
+            st.dataframe(error_df, width='stretch')

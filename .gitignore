@@ -84,6 +84,7 @@ desktop.ini
 node_modules/
 
 # Database files
+*.pdf
 *.db
 *.sqlite
 *.sqlite3

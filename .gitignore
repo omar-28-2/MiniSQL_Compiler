@@ -60,7 +60,6 @@ Thumbs.db
 desktop.ini
 
 # Project specific
-*.pdf
 *.log
 .streamlit/
 

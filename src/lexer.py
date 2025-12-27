@@ -1,9 +1,14 @@
 import difflib
+from constants import SQL_KEYWORDS
 
 
 class LexerError(Exception):
     """Custom exception for lexer errors"""
-    pass
+    def __init__(self, message, line, column):
+        self.message = message
+        self.line = line
+        self.column = column
+        super().__init__(f"Lexical Error at line {line}, column {column}: {message}")
 
 
 class Token:
@@ -26,29 +31,7 @@ class Lexer:
         self.column = 1
         self.token_start_col = 1  # Track where current token started
         # SQL reserved words that should be classified as KEYWORD tokens
-        self.keywords = {
-            # Core DML / DDL / clauses
-            'ADD', 'ALL', 'ALTER', 'AND', 'ANY', 'AS', 'ASC', 'BETWEEN', 'BY',
-            'CASE', 'CHECK', 'COLUMN', 'CREATE', 'DATABASE', 'DEFAULT',
-            'DELETE', 'DESC', 'DISTINCT', 'DROP', 'ELSE', 'EXISTS', 'FOREIGN',
-            'FROM', 'FULL', 'GROUP', 'HAVING', 'IN', 'INDEX', 'INNER',
-            'INSERT', 'INTERSECT', 'INTO', 'IS', 'JOIN', 'KEY', 'LEFT', 'LIKE',
-            'LIMIT', 'NOT', 'NULL', 'ON', 'OR', 'ORDER', 'OUTER', 'PRIMARY',
-            'REFERENCES', 'RIGHT', 'ROWNUM', 'SELECT', 'SET', 'TABLE', 'TOP',
-            'UNION', 'UNIQUE', 'UPDATE', 'VALUES', 'VIEW', 'WHERE',
-
-            # Additional control / structural keywords
-            'AFTER', 'BEFORE', 'CASCADE', 'CONTINUE', 'CROSS',
-            'CURRENT_TIME', 'DECLARE', 'DESCRIBE', 'EXCEPT', 'FETCH', 'FOR',
-            'GRANT', 'GROUPING', 'IF', 'IGNORE', 'INDEXES', 'INTERVAL',
-            'ISNULL', 'NATURAL', 'OFFSET', 'PARTITION', 'REPLACE',
-            'RETURNING', 'ROLLUP', 'SOME', 'TRUNCATE', 'USING', 'WHEN',
-            'WITH', 'WITHIN', 'GROUP',
-            
-            # Aggregate and built-in functions
-            'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'CAST', 'COALESCE',
-            'SUBSTR', 'LENGTH', 'UPPER', 'LOWER', 'ROUND', 'FLOOR', 'CEIL'
-        }
+        self.keywords = SQL_KEYWORDS
         
         # Multi-character operators
         self.multi_char_operators = {
@@ -81,7 +64,7 @@ class Lexer:
 
     def error(self, message):
         # Raise a custom lexer error with a fully formatted message.
-        raise LexerError(message)
+        raise LexerError(message, self.line, self.column)
 
     def advance(self):
         """Move to the next character and properly track line/column position"""
@@ -101,17 +84,12 @@ class Lexer:
         while self.current_char is not None and self.current_char.isspace():
             self.advance()
 
-    def skip_comment(self):
-        # Single-line comment
-        if self.current_char == '-' and self.pos + 1 < len(self.text) and self.text[self.pos + 1] == '-':
-            while self.current_char is not None and self.current_char != '\n':
-                self.advance()
-            self.advance()  # Skip the newline character
-        # Multi-line comment
-        elif self.current_char == '#' and self.pos + 1 < len(self.text) and self.text[self.pos + 1] == '#':
+    def skip_comments(self):
+        """Skip single line comments (--) and multi-line comments (##)"""
+        # Multi-line comments ## ... ##
+        if self.current_char == '#' and self.pos + 1 < len(self.text) and self.text[self.pos + 1] == '#':
             start_line = self.line
             start_col = self.column
-            self.advance()  # Skip first #
             self.advance()  # Skip second #
             
             while (self.current_char is not None and 
@@ -184,7 +162,7 @@ class Lexer:
             # This allows for domain-specific identifiers while providing a warning mechanism
             pass
         
-        return 'IDENTIFIER', result
+        return 'IDENTIFIER', result 
 
     def get_string(self):
         """Parse string literals with support for escaped quotes"""
@@ -193,19 +171,24 @@ class Lexer:
         start_col = self.column
         self.advance()  # Skip the opening quote
         
-        while self.current_char is not None and self.current_char != "'":
-            if self.current_char == '\n':
-                # Unclosed string before end of line
-                self.error(f"Unclosed string starting at line {start_line}, column {start_col}.")
-            
+        while self.current_char is not None:
             # Handle escaped quotes (SQL uses '' for a single quote inside a string)
             if self.current_char == "'" and self.pos + 1 < len(self.text) and self.text[self.pos + 1] == "'":
                 result += "'"
                 self.advance()  # Skip first quote
                 self.advance()  # Skip second quote
-            else:
-                result += self.current_char
-                self.advance()
+                continue
+            
+            # Check for closing quote
+            if self.current_char == "'":
+                break
+                
+            if self.current_char == '\n':
+                # Unclosed string before end of line
+                self.error(f"Unclosed string starting at line {start_line}, column {start_col}.")
+            
+            result += self.current_char
+            self.advance()
         
         if self.current_char != "'":
             # End of file reached without closing quote
@@ -224,11 +207,11 @@ class Lexer:
             
             # Skip comments
             if self.current_char == '-' and self.pos + 1 < len(self.text) and self.text[self.pos + 1] == '-':
-                self.skip_comment()
+                self.skip_comments()
                 continue
             
             if self.current_char == '#' and self.pos + 1 < len(self.text) and self.text[self.pos + 1] == '#':
-                self.skip_comment()
+                self.skip_comments()
                 continue
 
             # Identifiers and keywords
